@@ -545,6 +545,7 @@ module AnnotateModels
       model_path = file.gsub(/\.rb$/, '')
       model_dir.each { |dir| model_path = model_path.gsub(/^#{dir}/, '').gsub(/^\//, '') }
       begin
+        puts "Loading #{model_path}"
         get_loaded_model(model_path) || raise(BadModelFileError.new)
       rescue LoadError
         # this is for non-rails projects, which don't get Rails auto-require magic
@@ -563,11 +564,16 @@ module AnnotateModels
     # Retrieve loaded model class by path to the file where it's supposed to be defined.
     def get_loaded_model(model_path)
       begin
-        ActiveSupport::Inflector.constantize(ActiveSupport::Inflector.camelize(model_path))
+        camelized = ActiveSupport::Inflector.camelize(model_path)
+        constantized = ActiveSupport::Inflector.constantize(camelized)
+        puts "Camelized: #{camelized}\nConstantized: #{constantized}"
+        constantized
       rescue
+        puts "RESCUE"
         # Revert to the old way but it is not really robust
         ObjectSpace.each_object(::Class).
           select do |c|
+            puts "C: #{c.inspect}"
             Class === c &&    # note: we use === to avoid a bug in activesupport 2.3.14 OptionMerger vs. is_a?
             c.ancestors.respond_to?(:include?) &&  # to fix FactoryGirl bug, see https://github.com/ctran/annotate_models/pull/82
             c.ancestors.include?(ActiveRecord::Base)
